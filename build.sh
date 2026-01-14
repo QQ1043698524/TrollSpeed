@@ -17,8 +17,16 @@ xcodebuild clean build archive \
 -project TrollSpeed.xcodeproj \
 -sdk iphoneos \
 -destination 'generic/platform=iOS' \
--archivePath TrollSpeed \
+-archivePath ./TrollSpeed.xcarchive \
 CODE_SIGNING_ALLOWED=NO
+
+if [ -d "TrollSpeed.xcarchive" ]; then
+    echo "Archive found at TrollSpeed.xcarchive"
+else
+    echo "Archive NOT found at TrollSpeed.xcarchive"
+    ls -R
+    exit 1
+fi
 
 chmod 0644 Resources/Info.plist
 cp supports/entitlements.plist TrollSpeed.xcarchive/Products
