@@ -11,7 +11,7 @@
     #import <UIKit/UIKit.h>
 
 #if !TARGET_OS_SIMULATOR
-    #import "libroot.h"
+    #import "../libroot/libroot.h"
 #endif
     #import <os/log.h>
 

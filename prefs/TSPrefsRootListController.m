@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <Preferences/PSSpecifier.h>
 
-#import <libroot.h>
+#import "../libroot/libroot.h"
 
 #import "TSPrefsRootListController.h"
 
