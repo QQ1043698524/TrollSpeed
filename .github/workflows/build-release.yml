@@ -60,7 +60,9 @@ jobs:
           echo "FINALPACKAGE=1" >> $GITHUB_ENV
           cd $GITHUB_WORKSPACE/TrollSpeed
           git fetch --tags
-          echo "GIT_TAG=$(git describe --tags --always --abbrev=0)" >> $GITHUB_ENV
+          GIT_TAG_RAW=$(git describe --tags --always --abbrev=0)
+          # Ensure tag starts with v for the script if needed, but here just use it
+          echo "GIT_TAG=${GIT_TAG_RAW}" >> $GITHUB_ENV
 
       - name: Build package
         run: |
