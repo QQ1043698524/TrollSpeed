@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libroot.h>
+#include "libroot.h"
 
 #if THEOS_PACKAGE_SCHEME_ROOTHIDE
 #include <roothide.h>
