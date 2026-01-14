@@ -58,3 +58,100 @@ extension UIViewController {
         self.present(controller, animated: true, completion: nil)
     }
 }
+
+@objc public class SmartSolver: NSObject {
+    @objc public static let shared = SmartSolver()
+    
+    @objc public func solve(image: UIImage, completion: @escaping (String?) -> Void) {
+        recognizeText(image: image) { text in
+            guard let text = text, !text.isEmpty else {
+                completion("No text recognized.")
+                return
+            }
+            self.askDoubao(question: text, completion: completion)
+        }
+    }
+    
+    private func recognizeText(image: UIImage, completion: @escaping (String?) -> Void) {
+        guard let cgImage = image.cgImage else {
+            completion(nil)
+            return
+        }
+        
+        let request = VNRecognizeTextRequest { request, error in
+            guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                completion(nil)
+                return
+            }
+            let text = observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
+            completion(text)
+        }
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        request.recognitionLanguages = ["zh-Hans", "en-US"]
+        
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            print("OCR Error: \(error)")
+            completion(nil)
+        }
+    }
+    
+    private func askDoubao(question: String, completion: @escaping (String?) -> Void) {
+        // REPLACE WITH YOUR REAL API KEY AND ENDPOINT ID
+        let apiKey = "1c1ea50e-b1e5-421d-8290-f7028f2363dd" 
+        let endpointId = "doubao-seed-1-8-251228" // e.g., ep-20240215000000-xxxxx
+        
+        guard apiKey != "YOUR_DOUBAO_API_KEY" else {
+            completion("Please configure Doubao API Key in SmartSolver.swift\nOCR Result:\n\(question)")
+            return
+        }
+
+        let url = URL(string: "https://ark.cn-beijing.volces.com/api/v3/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let systemPrompt = "You are a helpful assistant. Please answer the following question concisely."
+        
+        let body: [String: Any] = [
+            "model": endpointId,
+            "messages": [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": question]
+            ]
+        ]
+        
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion("Network Error: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = data else {
+                completion("No data received")
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let choices = json["choices"] as? [[String: Any]],
+                   let firstChoice = choices.first,
+                   let message = firstChoice["message"] as? [String: Any],
+                   let content = message["content"] as? String {
+                    completion(content)
+                } else {
+                    let raw = String(data: data, encoding: .utf8) ?? ""
+                    completion("Invalid response: \(raw)")
+                }
+            } catch {
+                completion("JSON Error: \(error.localizedDescription)")
+            }
+        }.resume()
+    }
+}

@@ -443,6 +443,8 @@ static const CACornerMask kCornerMaskAll = kCALayerMinXMinYCorner | kCALayerMaxX
     NSLayoutConstraint *_trailingConstraint;
     UIInterfaceOrientation _orientation;
     FBSOrientationObserver *_orientationObserver;
+    UITextView *_answerView;
+    UILongPressGestureRecognizer *_longPressGestureRecognizer;
 }
 
 - (void)registerNotifications
@@ -813,6 +815,20 @@ static const CACornerMask kCornerMaskAll = kCALayerMinXMinYCorner | kCALayerMaxX
     _panGestureRecognizer.maximumNumberOfTouches = 1;
     [_contentView addGestureRecognizer:_panGestureRecognizer];
 
+    _longPressGestureRecognizer = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressGestureRecognized:)];
+    [_contentView addGestureRecognizer:_longPressGestureRecognizer];
+
+    _answerView = [[UITextView alloc] initWithFrame:CGRectZero];
+    _answerView.backgroundColor = [UIColor clearColor];
+    _answerView.textColor = [UIColor whiteColor];
+    _answerView.font = [UIFont systemFontOfSize:10];
+    _answerView.editable = NO;
+    _answerView.selectable = NO;
+    _answerView.textAlignment = NSTextAlignmentLeft;
+    _answerView.translatesAutoresizingMaskIntoConstraints = NO;
+    _answerView.hidden = YES;
+    [_blurView.contentView addSubview:_answerView];
+
     [_contentView setUserInteractionEnabled:YES];
 
     [self reloadUserDefaults];
@@ -997,8 +1013,21 @@ static const CACornerMask kCornerMaskAll = kCALayerMinXMinYCorner | kCALayerMaxX
         [_blurView.topAnchor constraintEqualToAnchor:_speedLabel.topAnchor constant:-2],
         [_blurView.leadingAnchor constraintEqualToAnchor:_speedLabel.leadingAnchor constant:-4],
         [_blurView.trailingAnchor constraintEqualToAnchor:_speedLabel.trailingAnchor constant:4],
-        [_blurView.bottomAnchor constraintEqualToAnchor:_speedLabel.bottomAnchor constant:2],
     ]];
+
+    [_constraints addObjectsFromArray:@[
+        [_answerView.topAnchor constraintEqualToAnchor:_speedLabel.bottomAnchor constant:4],
+        [_answerView.leadingAnchor constraintEqualToAnchor:_blurView.leadingAnchor constant:4],
+        [_answerView.trailingAnchor constraintEqualToAnchor:_blurView.trailingAnchor constant:-4],
+    ]];
+
+    if (_answerView.hidden) {
+        [_constraints addObject:[_answerView.heightAnchor constraintEqualToConstant:0]];
+        [_constraints addObject:[_blurView.bottomAnchor constraintEqualToAnchor:_speedLabel.bottomAnchor constant:2]];
+    } else {
+        [_constraints addObject:[_answerView.heightAnchor constraintEqualToConstant:120]];
+        [_constraints addObject:[_blurView.bottomAnchor constraintEqualToAnchor:_answerView.bottomAnchor constant:4]];
+    }
 
     [_constraints addObjectsFromArray:@[
         [_lockedView.topAnchor constraintGreaterThanOrEqualToAnchor:_blurView.topAnchor constant:2],
@@ -1095,10 +1124,69 @@ static const CACornerMask kCornerMaskAll = kCALayerMinXMinYCorner | kCALayerMaxX
 - (void)tapGestureRecognized:(UITapGestureRecognizer *)sender
 {
     log_info(OS_LOG_DEFAULT, "TAPPED");
+    
+    if (!_answerView.hidden) {
+        _answerView.hidden = YES;
+        _answerView.text = @"";
+        [self.view setNeedsUpdateConstraints];
+        [UIView animateWithDuration:0.3 animations:^{
+            [self.view layoutIfNeeded];
+        }];
+        [self updateSpeedLabel];
+        return;
+    }
+
     if (!_isFocused) {
         [self onFocus:sender.view];
+        return;
     } else {
         [self keepFocus:sender.view];
+    }
+    
+    self.view.hidden = YES;
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIImage *screen = HUDCaptureScreen();
+        self.view.hidden = NO;
+        
+        if (!screen) {
+            return;
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+             _speedLabel.text = @"Thinking...";
+        });
+        
+        [[SmartSolver shared] solveWithImage:screen completion:^(NSString *answer) {
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 if (answer) {
+                     _answerView.text = answer;
+                     _answerView.hidden = NO;
+                     [self.view setNeedsUpdateConstraints];
+                     [UIView animateWithDuration:0.3 animations:^{
+                         [self.view layoutIfNeeded];
+                     }];
+                 } else {
+                     _speedLabel.text = @"Failed";
+                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                         [self updateSpeedLabel];
+                     });
+                 }
+             });
+        }];
+    });
+}
+
+- (void)longPressGestureRecognized:(UILongPressGestureRecognizer *)sender
+{
+    if (sender.state == UIGestureRecognizerStateBegan) {
+        [UIView animateWithDuration:0.3 animations:^{
+             if (self.view.alpha < 0.1) {
+                 self.view.alpha = HUD_INACTIVE_OPACITY;
+             } else {
+                 self.view.alpha = 0.01;
+             }
+        }];
     }
 }
 

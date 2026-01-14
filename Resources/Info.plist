@@ -39,6 +39,8 @@
 	<string>c016dd82</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2023-2024 Lessica &amp; Lakr Aream. All Rights Reserved.</string>
 	<key>NSPrincipalClass</key>

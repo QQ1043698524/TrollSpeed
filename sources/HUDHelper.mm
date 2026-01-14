@@ -13,6 +13,12 @@
 #import "NSUserDefaults+Private.h"
 
 extern "C" char **environ;
+extern "C" UIImage *_UICreateScreenUIImage(void);
+
+UIImage * _Nullable HUDCaptureScreen(void)
+{
+    return _UICreateScreenUIImage();
+}
 
 #define POSIX_SPAWN_PERSONA_FLAGS_OVERRIDE 1
 extern "C" int posix_spawnattr_set_persona_np(const posix_spawnattr_t* __restrict, uid_t, uint32_t);
