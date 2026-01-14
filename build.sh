@@ -18,7 +18,7 @@ xcodebuild clean build archive \
 -sdk iphoneos \
 -destination 'generic/platform=iOS' \
 -archivePath TrollSpeed \
-CODE_SIGNING_ALLOWED=NO | xcpretty
+CODE_SIGNING_ALLOWED=NO
 
 chmod 0644 Resources/Info.plist
 cp supports/entitlements.plist TrollSpeed.xcarchive/Products
