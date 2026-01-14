@@ -53,6 +53,7 @@ jobs:
           ref: main
           path: TrollSpeed
           submodules: recursive
+          fetch-depth: 0
 
       - name: Setup build environment
         run: |
